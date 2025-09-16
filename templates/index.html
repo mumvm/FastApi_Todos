@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>To-Do List</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.4; }
+    ul { padding-left: 1.25rem; }
+    li { margin: 0.25rem 0; }
+    button { margin-left: .25rem; }
+    input { padding: .4rem .5rem; margin-right: .4rem; }
+  </style>
+</head>
+<body>
+  <h1>To-Do List</h1>
+
+  <ul id="todo-list"></ul>
+
+  <form id="todo-form">
+    <input type="text" id="title" placeholder="학번" required />
+    <input type="text" id="description" placeholder="이름" required />
+    <button type="submit">Add To-Do</button>
+  </form>
+
+  <script>
+    async function fetchTodos() {
+      const res = await fetch("/todos");
+      const todos = await res.json();
+      const list = document.getElementById("todo-list");
+      list.innerHTML = "";
+
+      todos.forEach((todo) => {
+        const li = document.createElement("li");
+        li.textContent = `${todo.title}: ${todo.description} (Completed: ${todo.completed})`;
+
+        // Edit 버튼
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.textContent = "Edit";
+        editBtn.addEventListener("click", async () => {
+          const newTitle = prompt("학번을 입력하세요", todo.title);
+          if (newTitle === null) return; // 취소
+          const newDesc = prompt("이름을 입력하세요", todo.description);
+          if (newDesc === null) return;
+          const newCompleted = confirm("완료 상태로 표시할까요? 확인=완료, 취소=미완료")
+            ? true
+            : false;
+
+          const updated = {
+            id: todo.id,
+            title: newTitle.trim(),
+            description: newDesc.trim(),
+            completed: newCompleted,
+          };
+
+          const resp = await fetch(`/todos/${todo.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updated),
+          });
+          if (resp.ok) fetchTodos();
+          else alert("수정 실패");
+        });
+
+        // Delete 버튼
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.textContent = "Delete";
+        delBtn.addEventListener("click", async () => {
+          if (!confirm("정말 삭제할까요?")) return;
+          const resp = await fetch(`/todos/${todo.id}`, { method: "DELETE" });
+          if (resp.ok) fetchTodos();
+          else alert("삭제 실패");
+        });
+
+        li.appendChild(editBtn);
+        li.appendChild(delBtn);
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById("todo-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const titleEl = document.getElementById("title");
+      const descEl = document.getElementById("description");
+
+      const payload = {
+        id: Date.now(),
+        title: titleEl.value.trim(),
+        description: descEl.value.trim(),
+        completed: false,
+      };
+
+      const res = await fetch("/todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        titleEl.value = "";
+        descEl.value = "";
+        fetchTodos();
+      } else {
+        alert("추가 실패");
+      }
+    });
+
+    // 초기 로드
+    fetchTodos();
+  </script>
+</body>
+</html>
