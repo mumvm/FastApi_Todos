@@ -7,7 +7,7 @@
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.4; }
     ul { padding-left: 1.25rem; }
-    li { margin: 0.25rem 0; }
+    li { margin: 0.25rem 0; display: flex; align-items: center; gap: 0.5rem; }
     button { margin-left: .25rem; }
     input[type="text"] { padding: .4rem .5rem; margin-right: .4rem; }
     .completed-text { text-decoration: line-through; color: gray; }
@@ -34,12 +34,16 @@
       todos.forEach((todo) => {
         const li = document.createElement("li");
 
-        // 체크박스 (completed 토글)
+        // 체크박스 (완료 토글)
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
         checkbox.checked = todo.completed;
         checkbox.addEventListener("change", async () => {
-          const updated = { ...todo, completed: checkbox.checked };
+          const updated = {
+            title: todo.title,
+            description: todo.description,
+            completed: checkbox.checked,
+          };
           const resp = await fetch(`/todos/${todo.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -54,7 +58,7 @@
 
         // 텍스트
         const span = document.createElement("span");
-        span.textContent = `${todo.title}: ${todo.description} (Completed: ${todo.completed})`;
+        span.textContent = `${todo.title}: ${todo.description}`;
         if (todo.completed) {
           span.classList.add("completed-text");
         }
@@ -70,7 +74,6 @@
           if (newDesc === null) return;
 
           const updated = {
-            id: todo.id,
             title: newTitle.trim(),
             description: newDesc.trim(),
             completed: todo.completed,
@@ -110,7 +113,6 @@
       const descEl = document.getElementById("description");
 
       const payload = {
-        id: Date.now(),
         title: titleEl.value.trim(),
         description: descEl.value.trim(),
         completed: false,
