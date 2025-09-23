@@ -9,7 +9,8 @@
     ul { padding-left: 1.25rem; }
     li { margin: 0.25rem 0; }
     button { margin-left: .25rem; }
-    input { padding: .4rem .5rem; margin-right: .4rem; }
+    input[type="text"] { padding: .4rem .5rem; margin-right: .4rem; }
+    .completed-text { text-decoration: line-through; color: gray; }
   </style>
 </head>
 <body>
@@ -32,7 +33,31 @@
 
       todos.forEach((todo) => {
         const li = document.createElement("li");
-        li.textContent = `${todo.title}: ${todo.description} (Completed: ${todo.completed})`;
+
+        // 체크박스 (completed 토글)
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = todo.completed;
+        checkbox.addEventListener("change", async () => {
+          const updated = { ...todo, completed: checkbox.checked };
+          const resp = await fetch(`/todos/${todo.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updated),
+          });
+          if (resp.ok) {
+            fetchTodos();
+          } else {
+            alert("완료 상태 업데이트 실패");
+          }
+        });
+
+        // 텍스트
+        const span = document.createElement("span");
+        span.textContent = `${todo.title}: ${todo.description} (Completed: ${todo.completed})`;
+        if (todo.completed) {
+          span.classList.add("completed-text");
+        }
 
         // Edit 버튼
         const editBtn = document.createElement("button");
@@ -40,18 +65,15 @@
         editBtn.textContent = "Edit";
         editBtn.addEventListener("click", async () => {
           const newTitle = prompt("학번을 입력하세요", todo.title);
-          if (newTitle === null) return; // 취소
+          if (newTitle === null) return;
           const newDesc = prompt("이름을 입력하세요", todo.description);
           if (newDesc === null) return;
-          const newCompleted = confirm("완료 상태로 표시할까요? 확인=완료, 취소=미완료")
-            ? true
-            : false;
 
           const updated = {
             id: todo.id,
             title: newTitle.trim(),
             description: newDesc.trim(),
-            completed: newCompleted,
+            completed: todo.completed,
           };
 
           const resp = await fetch(`/todos/${todo.id}`, {
@@ -74,6 +96,8 @@
           else alert("삭제 실패");
         });
 
+        li.appendChild(checkbox);
+        li.appendChild(span);
         li.appendChild(editBtn);
         li.appendChild(delBtn);
         list.appendChild(li);
