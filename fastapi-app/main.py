@@ -13,6 +13,7 @@ TODO_FILE = BASE_DIR / "todo.json"
 
 # To-Do 항목 모델
 class TodoItem(BaseModel):
+    id: int | None = None
     title: str
     description: str
     completed: bool
@@ -35,7 +36,10 @@ def load_todos():
 
 
 def save_todos(todos):
-    TODO_FILE.write_text(json.dumps(todos, indent=4, ensure_ascii=False), encoding="utf-8")
+    TODO_FILE.write_text(
+        json.dumps(todos, indent=4, ensure_ascii=False),
+        encoding="utf-8"
+    )
 
 
 @app.get("/todos")
@@ -46,7 +50,6 @@ def get_todos():
 @app.post("/todos")
 def create_todo(todo: TodoItem):
     todos = load_todos()
-    # 새 id = 현재 최대 id + 1
     new_id = max([t["id"] for t in todos], default=0) + 1
     new_todo = {
         "id": new_id,
@@ -63,7 +66,7 @@ def create_todo(todo: TodoItem):
 def update_todo(todo_id: int, updated_todo: TodoItem):
     todos = load_todos()
     for i, t in enumerate(todos):
-        if t["id"] == todo_id:
+        if t.get("id") == todo_id:
             todos[i] = {
                 "id": todo_id,
                 "title": updated_todo.title,
@@ -78,7 +81,7 @@ def update_todo(todo_id: int, updated_todo: TodoItem):
 @app.delete("/todos/{todo_id}")
 def delete_todo(todo_id: int):
     todos = load_todos()
-    new_todos = [t for t in todos if t["id"] != todo_id]
+    new_todos = [t for t in todos if t.get("id") != todo_id]
     if len(new_todos) == len(todos):
         raise HTTPException(status_code=404, detail="To-Do item not found")
     save_todos(new_todos)
