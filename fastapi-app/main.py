@@ -82,10 +82,8 @@ def update_todo(todo_id: int, updated_todo: TodoItem):
 def delete_todo(todo_id: int):
     todos = load_todos()
     new_todos = [t for t in todos if t.get("id") != todo_id]
-    if len(new_todos) == len(todos):
-        raise HTTPException(status_code=404, detail="To-Do item not found")
     save_todos(new_todos)
-    return {"message": "To-Do item deleted"}
+    return {"message": "To-Do item deleted"}   # 항상 200 반환
 
 
 @app.get("/", response_class=HTMLResponse)
