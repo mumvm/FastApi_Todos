@@ -6,6 +6,8 @@ import json
 import os
 from prometheus_fastapi_instrumentator import Instrumentator
 
+from typing import Optional
+
 app = FastAPI()
 
 # Prometheus 메트릭스 엔드포인트 (/metrics)
@@ -18,7 +20,8 @@ TODO_FILE = BASE_DIR / "todo.json"
 
 # To-Do 항목 모델
 class TodoItem(BaseModel):
-    id: int | None = None
+    # id: int | None = None
+    id: Optional[int] = None
     title: str
     description: str
     completed: bool
