@@ -3,7 +3,6 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from pathlib import Path
 import json
-import os
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from typing import Optional
@@ -20,7 +19,6 @@ TODO_FILE = BASE_DIR / "todo.json"
 
 # To-Do 항목 모델
 class TodoItem(BaseModel):
-    # id: int | None = None
     id: Optional[int] = None
     title: str
     description: str
