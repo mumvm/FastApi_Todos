@@ -7,10 +7,12 @@
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.4; }
     ul { padding-left: 1.25rem; }
-    li { margin: 0.25rem 0; display: flex; align-items: center; gap: 0.5rem; }
+    li { margin: 0.25rem 0; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
     button { margin-left: .25rem; }
     input[type="text"] { padding: .4rem .5rem; margin-right: .4rem; }
+    input[type="datetime-local"] { padding: .35rem .45rem; margin-right: .4rem; }
     .completed-text { text-decoration: line-through; color: gray; }
+    .meta { font-size: 0.85rem; color: #444; }
   </style>
 </head>
 <body>
@@ -21,10 +23,13 @@
   <form id="todo-form">
     <input type="text" id="title" placeholder="학번" required />
     <input type="text" id="description" placeholder="이름" required />
+    <input type="datetime-local" id="due-datetime" aria-label="마감 날짜와 시간" />
     <button type="submit">Add To-Do</button>
   </form>
 
   <script>
+    const formatDue = (value) => value ? value.replace("T", " ") : "미정";
+
     async function fetchTodos() {
       const res = await fetch("/todos");
       const todos = await res.json();
@@ -43,6 +48,7 @@
             title: todo.title,
             description: todo.description,
             completed: checkbox.checked,
+            due_datetime: todo.due_datetime,
           };
           const resp = await fetch(`/todos/${todo.id}`, {
             method: "PUT",
@@ -59,9 +65,11 @@
         // 텍스트
         const span = document.createElement("span");
         span.textContent = `${todo.title}: ${todo.description}`;
-        if (todo.completed) {
-          span.classList.add("completed-text");
-        }
+        if (todo.completed) span.classList.add("completed-text");
+
+        const due = document.createElement("div");
+        due.className = "meta";
+        due.textContent = `마감: ${formatDue(todo.due_datetime)}`;
 
         // Edit 버튼
         const editBtn = document.createElement("button");
@@ -72,11 +80,14 @@
           if (newTitle === null) return;
           const newDesc = prompt("이름을 입력하세요", todo.description);
           if (newDesc === null) return;
+          const newDue = prompt("마감 날짜 및 시간 (예: 2024-06-18T14:30)", todo.due_datetime || "");
+          if (newDue === null) return;
 
           const updated = {
             title: newTitle.trim(),
             description: newDesc.trim(),
             completed: todo.completed,
+            due_datetime: newDue && newDue.trim() !== "" ? newDue.trim() : null,
           };
 
           const resp = await fetch(`/todos/${todo.id}`, {
@@ -101,6 +112,7 @@
 
         li.appendChild(checkbox);
         li.appendChild(span);
+        li.appendChild(due);
         li.appendChild(editBtn);
         li.appendChild(delBtn);
         list.appendChild(li);
@@ -111,11 +123,13 @@
       e.preventDefault();
       const titleEl = document.getElementById("title");
       const descEl = document.getElementById("description");
+      const dueEl = document.getElementById("due-datetime");
 
       const payload = {
         title: titleEl.value.trim(),
         description: descEl.value.trim(),
         completed: false,
+        due_datetime: dueEl.value ? dueEl.value : null,
       };
 
       const res = await fetch("/todos", {
@@ -127,6 +141,7 @@
       if (res.ok) {
         titleEl.value = "";
         descEl.value = "";
+        dueEl.value = "";
         fetchTodos();
       } else {
         alert("추가 실패");

@@ -22,18 +22,20 @@ def test_get_todos_empty():
     assert response.json() == []
 
 def test_get_todos_with_items():
-    todo = TodoItem(id=1, title="Test", description="Test description", completed=False)
+    todo = TodoItem(id=1, title="Test", description="Test description", completed=False, due_datetime="2024-01-01T12:00")
     save_todos([todo.model_dump()])
     response = client.get("/todos")
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["title"] == "Test"
+    assert response.json()[0]["due_datetime"] == "2024-01-01T12:00"
 
 def test_create_todo():
     todo = {"id": 1, "title": "Test", "description": "Test description", "completed": False}
     response = client.post("/todos", json=todo)
     assert response.status_code == 200
     assert response.json()["title"] == "Test"
+    assert "due_datetime" in response.json()
 
 def test_create_todo_invalid():
     todo = {"id": 1, "title": "Test"}
@@ -41,15 +43,16 @@ def test_create_todo_invalid():
     assert response.status_code == 422
 
 def test_update_todo():
-    todo = TodoItem(id=1, title="Test", description="Test description", completed=False)
+    todo = TodoItem(id=1, title="Test", description="Test description", completed=False, due_datetime=None)
     save_todos([todo.model_dump()])
-    updated_todo = {"id": 1, "title": "Updated", "description": "Updated description", "completed": True}
+    updated_todo = {"id": 1, "title": "Updated", "description": "Updated description", "completed": True, "due_datetime": "2024-05-05T10:30"}
     response = client.put("/todos/1", json=updated_todo)
     assert response.status_code == 200
     assert response.json()["title"] == "Updated"
+    assert response.json()["due_datetime"] == "2024-05-05T10:30"
 
 def test_update_todo_not_found():
-    updated_todo = {"id": 1, "title": "Updated", "description": "Updated description", "completed": True}
+    updated_todo = {"id": 1, "title": "Updated", "description": "Updated description", "completed": True, "due_datetime": None}
     response = client.put("/todos/1", json=updated_todo)
     assert response.status_code == 404
 
