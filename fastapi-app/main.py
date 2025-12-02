@@ -6,11 +6,10 @@ import json
 import os
 import logging
 import time
-from multiprocessing import Queue
 from os import getenv
 from fastapi import Request
 from prometheus_fastapi_instrumentator import Instrumentator
-from logging_loki import LokiQueueHandler
+from logging_loki import LokiHandler
 
 from typing import Optional
 
@@ -19,19 +18,35 @@ app = FastAPI()
 # Prometheus 메트릭스 엔드포인트 (/metrics)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
-loki_logs_handler = LokiQueueHandler(
-    Queue(-1),
-    url=getenv("LOKI_ENDPOINT"),
-    tags={"application": "fastapi"},
-    version="1",
-)
+def build_loki_handler() -> Optional[logging.Handler]:
+    endpoint = getenv("LOKI_ENDPOINT")
+    if not endpoint:
+        logging.getLogger(__name__).warning("LOKI_ENDPOINT is not set; skipping Loki logging")
+        return None
+    try:
+        return LokiHandler(
+            url=endpoint,
+            tags={"application": "fastapi"},
+            version="1",
+        )
+    except Exception as exc:
+        logging.getLogger(__name__).warning("Loki handler init failed: %s", exc)
+        return None
+
+loki_logs_handler = build_loki_handler()
 
 # Custom access logger (ignore Uvicorn's default logging)
 custom_logger = logging.getLogger("custom.access")
 custom_logger.setLevel(logging.INFO)
 
 # Add Loki handler (assuming `loki_logs_handler` is correctly configured)
-custom_logger.addHandler(loki_logs_handler)
+if loki_logs_handler:
+    custom_logger.addHandler(loki_logs_handler)
+    # Also send Uvicorn logs to Loki so container stdout/err are mirrored.
+    for logger_name in ("uvicorn.access", "uvicorn.error"):
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(loki_logs_handler)
 
 async def log_requests(request: Request, call_next):
     start_time = time.time()
@@ -47,6 +62,9 @@ async def log_requests(request: Request, call_next):
         custom_logger.info(log_message)
 
     return response
+    
+# Register middleware so request logs are actually emitted.
+app.middleware("http")(log_requests)
 
 BASE_DIR = Path(__file__).resolve().parent
 INDEX_HTML = BASE_DIR / "templates/index.html"
