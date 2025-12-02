@@ -8,6 +8,11 @@
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.4; }
     ul { padding-left: 1.25rem; }
     li { margin: 0.25rem 0; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    #todo-list { list-style: none; padding-left: 0; }
+    .group { flex-direction: column; align-items: flex-start; border: 1px solid #e5e7eb; background: #f8fafc; padding: 0.75rem 0.85rem; border-radius: 12px; }
+    .group-title { font-weight: 600; color: #1f2933; margin-bottom: 0.2rem; }
+    .group-list { list-style: none; padding-left: 0; margin: 0; width: 100%; }
+    .todo-row { align-items: center; }
     button { margin-left: .25rem; }
     input[type="text"] { padding: .4rem .5rem; margin-right: .4rem; }
     input[type="datetime-local"] { padding: .35rem .45rem; margin-right: .4rem; }
@@ -30,92 +35,144 @@
   <script>
     const formatDue = (value) => value ? value.replace("T", " ") : "미정";
 
+    const formatHeadingDate = (value) => {
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return value;
+      return new Intl.DateTimeFormat("ko", {
+        dateStyle: "medium",
+        weekday: "short",
+      }).format(parsed);
+    };
+
+    const groupByDate = (todos) => {
+      const buckets = todos.reduce((acc, todo) => {
+        const dateKey = todo.due_datetime ? todo.due_datetime.split("T")[0] : "NO_DATE";
+        (acc[dateKey] ||= []).push(todo);
+        return acc;
+      }, {});
+
+      const sortedKeys = Object.keys(buckets).sort((a, b) => {
+        if (a === "NO_DATE") return 1;
+        if (b === "NO_DATE") return -1;
+        return new Date(a) - new Date(b);
+      });
+
+      return sortedKeys.map((key) => ({
+        key,
+        label: key === "NO_DATE" ? "날짜 없음" : formatHeadingDate(key),
+        todos: buckets[key].sort((a, b) => {
+          if (a.due_datetime && b.due_datetime) return a.due_datetime.localeCompare(b.due_datetime);
+          if (a.due_datetime) return -1;
+          if (b.due_datetime) return 1;
+          return (a.id ?? 0) - (b.id ?? 0);
+        }),
+      }));
+    };
+
+    const renderTodoRow = (todo, refresh) => {
+      const li = document.createElement("li");
+      li.className = "todo-row";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = todo.completed;
+      checkbox.addEventListener("change", async () => {
+        const updated = {
+          title: todo.title,
+          description: todo.description,
+          completed: checkbox.checked,
+          due_datetime: todo.due_datetime,
+        };
+        const resp = await fetch(`/todos/${todo.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        });
+        if (resp.ok) {
+          refresh();
+        } else {
+          alert("완료 상태 업데이트 실패");
+        }
+      });
+
+      const span = document.createElement("span");
+      span.textContent = `${todo.title}: ${todo.description}`;
+      if (todo.completed) span.classList.add("completed-text");
+
+      const due = document.createElement("div");
+      due.className = "meta";
+      due.textContent = `마감: ${formatDue(todo.due_datetime)}`;
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", async () => {
+        const newTitle = prompt("학번을 입력하세요", todo.title);
+        if (newTitle === null) return;
+        const newDesc = prompt("이름을 입력하세요", todo.description);
+        if (newDesc === null) return;
+        const newDue = prompt("마감 날짜 및 시간 (예: 2024-06-18T14:30)", todo.due_datetime || "");
+        if (newDue === null) return;
+
+        const updated = {
+          title: newTitle.trim(),
+          description: newDesc.trim(),
+          completed: todo.completed,
+          due_datetime: newDue && newDue.trim() !== "" ? newDue.trim() : null,
+        };
+
+        const resp = await fetch(`/todos/${todo.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        });
+        if (resp.ok) refresh();
+        else alert("수정 실패");
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", async () => {
+        if (!confirm("정말 삭제할까요?")) return;
+        const resp = await fetch(`/todos/${todo.id}`, { method: "DELETE" });
+        if (resp.ok) refresh();
+        else alert("삭제 실패");
+      });
+
+      li.appendChild(checkbox);
+      li.appendChild(span);
+      li.appendChild(due);
+      li.appendChild(editBtn);
+      li.appendChild(delBtn);
+      return li;
+    };
+
     async function fetchTodos() {
       const res = await fetch("/todos");
       const todos = await res.json();
       const list = document.getElementById("todo-list");
       list.innerHTML = "";
 
-      todos.forEach((todo) => {
-        const li = document.createElement("li");
+      const groups = groupByDate(todos);
+      groups.forEach((group) => {
+        const wrapper = document.createElement("li");
+        wrapper.className = "group";
 
-        // 체크박스 (완료 토글)
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = todo.completed;
-        checkbox.addEventListener("change", async () => {
-          const updated = {
-            title: todo.title,
-            description: todo.description,
-            completed: checkbox.checked,
-            due_datetime: todo.due_datetime,
-          };
-          const resp = await fetch(`/todos/${todo.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updated),
-          });
-          if (resp.ok) {
-            fetchTodos();
-          } else {
-            alert("완료 상태 업데이트 실패");
-          }
+        const header = document.createElement("div");
+        header.className = "group-title";
+        header.textContent = group.label;
+        wrapper.appendChild(header);
+
+        const innerList = document.createElement("ul");
+        innerList.className = "group-list";
+
+        group.todos.forEach((todo) => {
+          innerList.appendChild(renderTodoRow(todo, fetchTodos));
         });
 
-        // 텍스트
-        const span = document.createElement("span");
-        span.textContent = `${todo.title}: ${todo.description}`;
-        if (todo.completed) span.classList.add("completed-text");
-
-        const due = document.createElement("div");
-        due.className = "meta";
-        due.textContent = `마감: ${formatDue(todo.due_datetime)}`;
-
-        // Edit 버튼
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.textContent = "Edit";
-        editBtn.addEventListener("click", async () => {
-          const newTitle = prompt("학번을 입력하세요", todo.title);
-          if (newTitle === null) return;
-          const newDesc = prompt("이름을 입력하세요", todo.description);
-          if (newDesc === null) return;
-          const newDue = prompt("마감 날짜 및 시간 (예: 2024-06-18T14:30)", todo.due_datetime || "");
-          if (newDue === null) return;
-
-          const updated = {
-            title: newTitle.trim(),
-            description: newDesc.trim(),
-            completed: todo.completed,
-            due_datetime: newDue && newDue.trim() !== "" ? newDue.trim() : null,
-          };
-
-          const resp = await fetch(`/todos/${todo.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updated),
-          });
-          if (resp.ok) fetchTodos();
-          else alert("수정 실패");
-        });
-
-        // Delete 버튼
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.textContent = "Delete";
-        delBtn.addEventListener("click", async () => {
-          if (!confirm("정말 삭제할까요?")) return;
-          const resp = await fetch(`/todos/${todo.id}`, { method: "DELETE" });
-          if (resp.ok) fetchTodos();
-          else alert("삭제 실패");
-        });
-
-        li.appendChild(checkbox);
-        li.appendChild(span);
-        li.appendChild(due);
-        li.appendChild(editBtn);
-        li.appendChild(delBtn);
-        list.appendChild(li);
+        wrapper.appendChild(innerList);
+        list.appendChild(wrapper);
       });
     }
 
