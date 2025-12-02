@@ -3,60 +3,15 @@ version: "3.7"
 services:
   fastapi-app:
     build:
-      context: ./fastapi-app      # Dockerfile이 위치한 디렉토리 경로
-      dockerfile: Dockerfile      # Dockerfile 이름 (생략 가능, 기본값은 'Dockerfile')
-    container_name: FastApi-app
+      context: ./fastapi-app
+      dockerfile: Dockerfile
+    container_name: fastapi-app
     ports:
       - "5001:5001"
-    networks:
-      - loadtest-net
-
-  sonarqube:
-      image: sonarqube:latest
-      container_name: sonarqube
-      ports:
-        - "9000:9000"
-      environment:
-        - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true  # 메모리 제한 환경에서 유용한 옵션
-      volumes:
-        - sonarqube_conf:/opt/sonarqube/conf
-        - sonarqube_data:/opt/sonarqube/data
-        - sonarqube_logs:/opt/sonarqube/logs
-        - sonarqube_extensions:/opt/sonarqube/extensions
-      networks:
-      - loadtest-net
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "7070:9090"
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-    networks:
-      - loadtest-net
-  
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000"
+    depends_on:
+      - loki
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin  # 기본 Grafana 로그인 비밀번호
-    volumes:
-      - grafana-data:/var/lib/grafana
-    networks:
-      - loadtest-net
-
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    ports:
-      - "7100:9100"
-    networks:
-      - loadtest-net
+      - LOKI_ENDPOINT=http://loki:3100/loki/api/v1/push
 
   jmeter:
     build:
@@ -77,13 +32,50 @@ services:
       - -e
       - -o
       - /jmeter/report
-    networks:
-      - loadtest-net
 
-networks:
-  loadtest-net:
-    driver: bridge
+  sonarqube:
+    image: sonarqube:latest
+    container_name: sonarqube
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonarqube_conf:/opt/sonarqube/conf
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "7070:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "7100:9100"
+
+  loki:
+    image: grafana/loki:2.9.6
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
 
 volumes:
   sonarqube_conf:
