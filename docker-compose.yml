@@ -12,6 +12,9 @@ services:
       - loki
     environment:
       - LOKI_ENDPOINT=http://loki:3100/loki/api/v1/push
+    volumes:
+      - ./fastapi-app:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 5001 --reload
 
   jmeter:
     build:
