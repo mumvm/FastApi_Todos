@@ -60,6 +60,7 @@ class TodoItem(BaseModel):
     description: str
     completed: bool
     due_datetime: Optional[str] = None
+    category: Optional[str] = None
 
 
 def ensure_todo_file():
@@ -100,6 +101,7 @@ def create_todo(todo: TodoItem):
         "description": todo.description,
         "completed": todo.completed,
         "due_datetime": todo.due_datetime,
+        "category": todo.category or "미분류",
     }
     todos.append(new_todo)
     save_todos(todos)
@@ -117,6 +119,7 @@ def update_todo(todo_id: int, updated_todo: TodoItem):
                 "description": updated_todo.description,
                 "completed": updated_todo.completed,
                 "due_datetime": updated_todo.due_datetime,
+                "category": updated_todo.category or t.get("category") or "미분류",
             }
             save_todos(todos)
             return todos[i]

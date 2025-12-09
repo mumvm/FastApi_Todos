@@ -3,119 +3,341 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>To-Do List</title>
+  <title>To-Do Board</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height: 1.4; }
-    ul { padding-left: 1.25rem; }
-    li { margin: 0.25rem 0; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-    button { margin-left: .25rem; }
-    input[type="text"] { padding: .4rem .5rem; margin-right: .4rem; }
-    input[type="datetime-local"] { padding: .35rem .45rem; margin-right: .4rem; }
-    .completed-text { text-decoration: line-through; color: gray; }
-    .meta { font-size: 0.85rem; color: #444; }
+    :root {
+      --bg: #f3f5f9;
+      --card: #fff;
+      --text: #1f2933;
+      --muted: #5f6b7a;
+      --accent: #2563eb;
+      --border: #e5e7eb;
+      --shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Inter", "Pretendard", "Segoe UI", system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      background: radial-gradient(circle at 10% 20%, #dbeafe 0, #f3f5f9 25%), var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 2rem 1rem 3rem;
+      display: flex;
+      justify-content: center;
+    }
+    .page {
+      width: min(1100px, 100%);
+    }
+    h1 {
+      margin: 0 0 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .toolbar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+      background: var(--card);
+      padding: 1rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    .toolbar input,
+    .toolbar button {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.65rem 0.75rem;
+      font-size: 0.95rem;
+    }
+    .toolbar input { flex: 1; min-width: 140px; }
+    .toolbar button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.08s ease, box-shadow 0.12s ease;
+    }
+    .toolbar button:hover { transform: translateY(-1px); box-shadow: 0 10px 18px rgba(37, 99, 235, 0.25); }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      align-items: start;
+    }
+    .column {
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      backdrop-filter: blur(6px);
+    }
+    .column h2 {
+      margin: 0;
+      font-size: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chip {
+      background: #e0e7ff;
+      color: #1d4ed8;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .todo-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .title {
+      font-weight: 700;
+      margin: 0;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .badge {
+      background: #e0e7ff;
+      color: #1d4ed8;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .desc {
+      margin: 0;
+      color: var(--muted);
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.55rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+    }
+    .status input { accent-color: var(--accent); }
+    .meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.9rem;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .actions button {
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      color: var(--text);
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.12s ease, transform 0.08s ease;
+    }
+    .actions button:hover { background: #eef2f7; transform: translateY(-1px); }
+    .actions .danger { color: #b91c1c; border-color: #fecdd3; background: #fff1f2; }
+    .actions .danger:hover { background: #ffe4e6; }
+    .completed .title { text-decoration: line-through; color: var(--muted); }
+    .tag { font-size: 0.85rem; color: var(--muted); }
   </style>
 </head>
 <body>
-  <h1>To-Do List</h1>
+  <div class="page">
+    <h1>To-Do 보드</h1>
 
-  <ul id="todo-list"></ul>
+    <form id="todo-form" class="toolbar">
+      <input type="text" id="category" placeholder="카테고리" />
+      <input type="text" id="title" placeholder="할일" required />
+      <input type="text" id="description" placeholder="메모" required />
+      <input type="datetime-local" id="due-datetime" aria-label="마감 일시" />
+      <button type="submit">추가</button>
+    </form>
 
-  <form id="todo-form">
-    <input type="text" id="title" placeholder="학번" required />
-    <input type="text" id="description" placeholder="이름" required />
-    <input type="datetime-local" id="due-datetime" aria-label="마감 날짜와 시간" />
-    <button type="submit">Add To-Do</button>
-  </form>
+    <div id="todo-board" class="board"></div>
+  </div>
 
   <script>
     const formatDue = (value) => value ? value.replace("T", " ") : "미정";
 
+    function makeCard(todo, onChanged) {
+      const card = document.createElement("article");
+      card.className = `todo-card ${todo.completed ? "completed" : ""}`;
+
+      const head = document.createElement("div");
+      head.className = "card-head";
+
+      const titleWrap = document.createElement("div");
+      titleWrap.className = "title-wrap";
+
+      const title = document.createElement("h3");
+      title.className = "title";
+      title.textContent = todo.title;
+
+      const badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = todo.category || "미분류";
+      title.appendChild(badge);
+
+      const desc = document.createElement("p");
+      desc.className = "desc";
+      desc.textContent = todo.description;
+
+      titleWrap.appendChild(title);
+      titleWrap.appendChild(desc);
+
+      const status = document.createElement("label");
+      status.className = "status";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = todo.completed;
+      checkbox.addEventListener("change", async () => {
+        const updated = {
+          title: todo.title,
+          description: todo.description,
+          completed: checkbox.checked,
+          due_datetime: todo.due_datetime,
+          category: todo.category,
+        };
+        const resp = await fetch(`/todos/${todo.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        });
+        if (resp.ok) {
+          onChanged();
+        } else {
+          alert("완료 상태 업데이트 실패");
+        }
+      });
+      const statusText = document.createElement("span");
+      statusText.textContent = checkbox.checked ? "완료" : "진행 중";
+      status.appendChild(checkbox);
+      status.appendChild(statusText);
+
+      head.appendChild(titleWrap);
+      head.appendChild(status);
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.innerHTML = `<span>Due date: ${formatDue(todo.due_datetime)}</span>`;
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", async () => {
+        const newCategory = prompt("카테고리를 입력하세요", todo.category || "");
+        if (newCategory === null) return;
+        const newTitle = prompt("할일을 입력하세요", todo.title);
+        if (newTitle === null) return;
+        const newDesc = prompt("메모를 입력하세요", todo.description);
+        if (newDesc === null) return;
+        const newDue = prompt("마감 날짜 및 시간 (예: 2024-06-18T14:30)", todo.due_datetime || "");
+        if (newDue === null) return;
+
+        const updated = {
+          title: newTitle.trim(),
+          description: newDesc.trim(),
+          completed: todo.completed,
+          due_datetime: newDue && newDue.trim() !== "" ? newDue.trim() : null,
+          category: newCategory.trim() || "미분류",
+        };
+
+        const resp = await fetch(`/todos/${todo.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated),
+        });
+        if (resp.ok) onChanged();
+        else alert("수정 실패");
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.textContent = "Delete";
+      delBtn.className = "danger";
+      delBtn.addEventListener("click", async () => {
+        if (!confirm("정말 삭제할까요?")) return;
+        const resp = await fetch(`/todos/${todo.id}`, { method: "DELETE" });
+        if (resp.ok) onChanged();
+        else alert("삭제 실패");
+      });
+
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+
+      card.appendChild(head);
+      card.appendChild(meta);
+      card.appendChild(actions);
+      return card;
+    }
+
     async function fetchTodos() {
       const res = await fetch("/todos");
       const todos = await res.json();
-      const list = document.getElementById("todo-list");
-      list.innerHTML = "";
+      const boardEl = document.getElementById("todo-board");
+      boardEl.innerHTML = "";
 
-      todos.forEach((todo) => {
-        const li = document.createElement("li");
+      // 카테고리별로 그룹핑
+      const grouped = todos.reduce((acc, todo) => {
+        const cat = todo.category || "미분류";
+        if (!acc[cat]) acc[cat] = [];
+        acc[cat].push(todo);
+        return acc;
+      }, {});
 
-        // 체크박스 (완료 토글)
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = todo.completed;
-        checkbox.addEventListener("change", async () => {
-          const updated = {
-            title: todo.title,
-            description: todo.description,
-            completed: checkbox.checked,
-            due_datetime: todo.due_datetime,
-          };
-          const resp = await fetch(`/todos/${todo.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updated),
-          });
-          if (resp.ok) {
-            fetchTodos();
-          } else {
-            alert("완료 상태 업데이트 실패");
-          }
+      const categories = Object.keys(grouped).sort();
+
+      categories.forEach((cat) => {
+        const column = document.createElement("section");
+        column.className = "column";
+
+        const header = document.createElement("h2");
+        header.innerHTML = `<span>${cat}</span> <span class="chip">${grouped[cat].length}</span>`;
+        column.appendChild(header);
+
+        grouped[cat].forEach((todo) => {
+          const card = makeCard(todo, fetchTodos);
+          column.appendChild(card);
         });
 
-        // 텍스트
-        const span = document.createElement("span");
-        span.textContent = `${todo.title}: ${todo.description}`;
-        if (todo.completed) span.classList.add("completed-text");
-
-        const due = document.createElement("div");
-        due.className = "meta";
-        due.textContent = `마감: ${formatDue(todo.due_datetime)}`;
-
-        // Edit 버튼
-        const editBtn = document.createElement("button");
-        editBtn.type = "button";
-        editBtn.textContent = "Edit";
-        editBtn.addEventListener("click", async () => {
-          const newTitle = prompt("학번을 입력하세요", todo.title);
-          if (newTitle === null) return;
-          const newDesc = prompt("이름을 입력하세요", todo.description);
-          if (newDesc === null) return;
-          const newDue = prompt("마감 날짜 및 시간 (예: 2024-06-18T14:30)", todo.due_datetime || "");
-          if (newDue === null) return;
-
-          const updated = {
-            title: newTitle.trim(),
-            description: newDesc.trim(),
-            completed: todo.completed,
-            due_datetime: newDue && newDue.trim() !== "" ? newDue.trim() : null,
-          };
-
-          const resp = await fetch(`/todos/${todo.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updated),
-          });
-          if (resp.ok) fetchTodos();
-          else alert("수정 실패");
-        });
-
-        // Delete 버튼
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.textContent = "Delete";
-        delBtn.addEventListener("click", async () => {
-          if (!confirm("정말 삭제할까요?")) return;
-          const resp = await fetch(`/todos/${todo.id}`, { method: "DELETE" });
-          if (resp.ok) fetchTodos();
-          else alert("삭제 실패");
-        });
-
-        li.appendChild(checkbox);
-        li.appendChild(span);
-        li.appendChild(due);
-        li.appendChild(editBtn);
-        li.appendChild(delBtn);
-        list.appendChild(li);
+        boardEl.appendChild(column);
       });
     }
 
@@ -124,8 +346,10 @@
       const titleEl = document.getElementById("title");
       const descEl = document.getElementById("description");
       const dueEl = document.getElementById("due-datetime");
+      const categoryEl = document.getElementById("category");
 
       const payload = {
+        category: categoryEl.value.trim() || "미분류",
         title: titleEl.value.trim(),
         description: descEl.value.trim(),
         completed: false,
@@ -139,6 +363,7 @@
       });
 
       if (res.ok) {
+        categoryEl.value = "";
         titleEl.value = "";
         descEl.value = "";
         dueEl.value = "";
