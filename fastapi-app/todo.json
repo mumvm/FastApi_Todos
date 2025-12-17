@@ -1,16 +1,50 @@
 [
     {
         "id": 1,
-        "title": "20210737",
-        "description": "문유정",
+        "title": "운영체제 과제",
+        "description": "pintos 명세서 읽기",
         "completed": false,
-        "due_datetime": "2025-11-24T14:20"
+        "due_datetime": "2025-11-24T14:20",
+        "category": "학교"
     },
     {
         "id": 2,
-        "title": "20210737",
-        "description": "오픈소스",
+        "title": "세션 준비",
+        "description": "강의자료 제작 필요!",
+        "completed": true,
+        "due_datetime": "2025-12-13",
+        "category": "동아리"
+    },
+    {
+        "id": 3,
+        "title": "가족 모임 참여",
+        "description": "📍잠실",
         "completed": false,
-        "due_datetime": null
+        "due_datetime": "2025-12-22T18:30",
+        "category": "기타"
+    },
+    {
+        "id": 4,
+        "title": "강릉 여행",
+        "description": "w/ 고등학교 친구들",
+        "completed": true,
+        "due_datetime": null,
+        "category": "기타"
+    },
+    {
+        "id": 5,
+        "title": "해킹 시험공부",
+        "description": "6. FSB~11.Review",
+        "completed": true,
+        "due_datetime": null,
+        "category": "학교"
+    },
+    {
+        "id": 6,
+        "title": "계절학기 수강신청",
+        "description": "철학적인간학",
+        "completed": true,
+        "due_datetime": null,
+        "category": "학교"
     }
 ]

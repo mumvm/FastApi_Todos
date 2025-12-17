@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>To-Do Board</title>
+  <title>To-Do List</title>
   <style>
     :root {
       --bg: #f3f5f9;
@@ -173,11 +173,86 @@
     .actions .danger:hover { background: #ffe4e6; }
     .completed .title { text-decoration: line-through; color: var(--muted); }
     .tag { font-size: 0.85rem; color: var(--muted); }
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(2px);
+      z-index: 10;
+    }
+    .modal.hidden { display: none; }
+    .modal-panel {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 24px 50px rgba(0, 0, 0, 0.18);
+      width: min(420px, 90vw);
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .modal-header h3 { margin: 0; }
+    .modal-close {
+      border: none;
+      background: transparent;
+      font-size: 1.25rem;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .modal form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .modal label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+    .modal input[type="text"],
+    .modal input[type="datetime-local"] {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.6rem 0.65rem;
+      font-size: 0.95rem;
+    }
+    .modal .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+    .btn {
+      padding: 0.55rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn.primary { background: var(--accent); color: #fff; border: none; }
+    .btn.secondary { background: #f8fafc; }
+    .checkbox-inline { display: inline-flex; gap: 0.35rem; align-items: center; }
   </style>
 </head>
 <body>
   <div class="page">
-    <h1>To-Do 보드</h1>
+    <h1>To-Do List</h1>
 
     <form id="todo-form" class="toolbar">
       <input type="text" id="category" placeholder="카테고리" />
@@ -190,8 +265,68 @@
     <div id="todo-board" class="board"></div>
   </div>
 
+  <div id="edit-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h3 id="edit-title">할 일 편집</h3>
+        <button type="button" class="modal-close" aria-label="닫기">&times;</button>
+      </div>
+      <form id="edit-form">
+        <label>
+          카테고리
+          <input type="text" id="edit-category" placeholder="카테고리" />
+        </label>
+        <label>
+          학번
+          <input type="text" id="edit-title-input" placeholder="학번" required />
+        </label>
+        <label>
+          이름
+          <input type="text" id="edit-description" placeholder="이름" required />
+        </label>
+        <label>
+          마감
+          <input type="datetime-local" id="edit-due" aria-label="마감 날짜와 시간" />
+        </label>
+        <div class="row">
+          <label class="checkbox-inline">
+            <input type="checkbox" id="edit-completed" />
+            완료
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn secondary" id="edit-cancel">취소</button>
+          <button type="submit" class="btn primary">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const formatDue = (value) => value ? value.replace("T", " ") : "미정";
+    const modalEl = document.getElementById("edit-modal");
+    const editForm = document.getElementById("edit-form");
+    const editCategoryEl = document.getElementById("edit-category");
+    const editTitleEl = document.getElementById("edit-title-input");
+    const editDescEl = document.getElementById("edit-description");
+    const editDueEl = document.getElementById("edit-due");
+    const editCompletedEl = document.getElementById("edit-completed");
+    let editingId = null;
+
+    function openEditModal(todo) {
+      editingId = todo.id;
+      editCategoryEl.value = todo.category || "미분류";
+      editTitleEl.value = todo.title;
+      editDescEl.value = todo.description;
+      editDueEl.value = todo.due_datetime || "";
+      editCompletedEl.checked = !!todo.completed;
+      modalEl.classList.remove("hidden");
+    }
+
+    function closeEditModal() {
+      editingId = null;
+      modalEl.classList.add("hidden");
+    }
 
     function makeCard(todo, onChanged) {
       const card = document.createElement("article");
@@ -253,7 +388,7 @@
 
       const meta = document.createElement("div");
       meta.className = "meta";
-      meta.innerHTML = `<span>Due date: ${formatDue(todo.due_datetime)}</span>`;
+      meta.innerHTML = `<span>❗️ ${formatDue(todo.due_datetime)}</span>`;
 
       const actions = document.createElement("div");
       actions.className = "actions";
@@ -261,32 +396,7 @@
       const editBtn = document.createElement("button");
       editBtn.type = "button";
       editBtn.textContent = "Edit";
-      editBtn.addEventListener("click", async () => {
-        const newCategory = prompt("카테고리를 입력하세요", todo.category || "");
-        if (newCategory === null) return;
-        const newTitle = prompt("할일을 입력하세요", todo.title);
-        if (newTitle === null) return;
-        const newDesc = prompt("메모를 입력하세요", todo.description);
-        if (newDesc === null) return;
-        const newDue = prompt("마감 날짜 및 시간 (예: 2024-06-18T14:30)", todo.due_datetime || "");
-        if (newDue === null) return;
-
-        const updated = {
-          title: newTitle.trim(),
-          description: newDesc.trim(),
-          completed: todo.completed,
-          due_datetime: newDue && newDue.trim() !== "" ? newDue.trim() : null,
-          category: newCategory.trim() || "미분류",
-        };
-
-        const resp = await fetch(`/todos/${todo.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updated),
-        });
-        if (resp.ok) onChanged();
-        else alert("수정 실패");
-      });
+      editBtn.addEventListener("click", () => openEditModal(todo));
 
       const delBtn = document.createElement("button");
       delBtn.type = "button";
@@ -371,6 +481,35 @@
       } else {
         alert("추가 실패");
       }
+    });
+
+    editForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!editingId) return;
+      const payload = {
+        category: editCategoryEl.value.trim() || "미분류",
+        title: editTitleEl.value.trim(),
+        description: editDescEl.value.trim(),
+        completed: editCompletedEl.checked,
+        due_datetime: editDueEl.value ? editDueEl.value : null,
+      };
+      const resp = await fetch(`/todos/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (resp.ok) {
+        closeEditModal();
+        fetchTodos();
+      } else {
+        alert("수정 실패");
+      }
+    });
+
+    document.querySelector(".modal-close").addEventListener("click", closeEditModal);
+    document.getElementById("edit-cancel").addEventListener("click", closeEditModal);
+    modalEl.addEventListener("click", (e) => {
+      if (e.target === modalEl) closeEditModal();
     });
 
     // 초기 로드
